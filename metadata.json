@@ -1,0 +1,6 @@
+{
+  "name": "Sistema MEDUCA - Registro y Secuencias de Tecnología",
+  "description": "Sistema oficial de calificaciones, control de asistencia, boletines y generador de secuencias didácticas semanales de Informática y Tecnología MEDUCA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
