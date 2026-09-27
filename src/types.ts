@@ -1,5 +1,22 @@
 export type TipoAsistencia = 'P' | 'A' | 'T' | 'J';
 
+export type CategoriaSeguimiento = 
+  | 'Logro Destacado' 
+  | 'Participación' 
+  | 'Tarea Pendiente' 
+  | 'Conducta' 
+  | 'Atención Requerida' 
+  | 'Citación Acudiente' 
+  | 'Adecuación Curricular';
+
+export interface RegistroSeguimiento {
+  id: string;
+  fecha: string;
+  categoria: CategoriaSeguimiento;
+  descripcion: string;
+  docente?: string;
+}
+
 export interface Estudiante {
   id: string;
   nombre: string;
@@ -7,6 +24,9 @@ export interface Estudiante {
   acudiente: string;
   telefono: string;
   observaciones?: string;
+  bitacora?: RegistroSeguimiento[];
+  intereses?: string;
+  condicionSalud?: string;
 }
 
 export type TipoActividadEvaluacion = 

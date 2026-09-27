@@ -28,6 +28,7 @@ interface RegistroNotasProps {
   onEditarActividad: (actividadId: string, nombre: string, tipo: TipoActividadEvaluacion) => void;
   onEliminarActividad: (actividadId: string) => void;
   onAsignarNotaMasiva?: (actividadId: string, valor: number) => void;
+  onVaciarActividades?: () => void;
 }
 
 export const RegistroNotas: React.FC<RegistroNotasProps> = ({
@@ -39,7 +40,8 @@ export const RegistroNotas: React.FC<RegistroNotasProps> = ({
   onAgregarActividad,
   onEditarActividad,
   onEliminarActividad,
-  onAsignarNotaMasiva
+  onAsignarNotaMasiva,
+  onVaciarActividades
 }) => {
   const estudiantes = grupo.estudiantes || [];
   const notasTrimestre = grupo.notas[trimestreActual] || {};
@@ -51,34 +53,11 @@ export const RegistroNotas: React.FC<RegistroNotasProps> = ({
 
   // Extract dynamic activity columns for this trimester
   const actividadesTrimestre: ActividadEvaluacion[] = useMemo(() => {
-    if (grupo.actividades && grupo.actividades[trimestreActual]) {
+    if (grupo.actividades && Array.isArray(grupo.actividades[trimestreActual])) {
       return grupo.actividades[trimestreActual] || [];
     }
-    // Backward compatibility: If no activities defined yet, check existing keys like '0_1', '0_2' in notas
-    const legacyIds = new Set<string>();
-    Object.keys(notasTrimestre).forEach((k) => {
-      const parts = k.split('_');
-      if (parts.length === 2) {
-        legacyIds.add(parts[1]);
-      }
-    });
-
-    if (legacyIds.size > 0) {
-      const sorted = Array.from(legacyIds).sort((a, b) => {
-        const numA = parseInt(a, 10);
-        const numB = parseInt(b, 10);
-        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-        return a.localeCompare(b);
-      });
-      return sorted.map((id) => ({
-        id,
-        nombre: `Actividad ${id}`,
-        tipo: id === '8' ? 'Parcial' : parseInt(id, 10) % 2 === 0 ? 'Laboratorio' : 'Taller'
-      }));
-    }
-
     return [];
-  }, [grupo.actividades, notasTrimestre, trimestreActual]);
+  }, [grupo.actividades, trimestreActual]);
 
   // Calculate statistics across active dynamic activities
   let sumaPromedios = 0;
@@ -543,6 +522,7 @@ export const RegistroNotas: React.FC<RegistroNotasProps> = ({
         onEditarActividad={onEditarActividad}
         onEliminarActividad={onEliminarActividad}
         onAsignarNotaMasiva={onAsignarNotaMasiva}
+        onVaciarActividades={onVaciarActividades}
       />
     </div>
   );

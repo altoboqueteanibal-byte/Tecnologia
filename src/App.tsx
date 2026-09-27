@@ -12,13 +12,16 @@ import { ModalGestionarEstudiantes } from './components/ModalGestionarEstudiante
 import { ModalRespaldos } from './components/ModalRespaldos';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { GoogleWorkspacePanel } from './components/GoogleWorkspacePanel';
+import { HerramientasAula } from './components/HerramientasAula';
+import { SeguimientoEstudiantes } from './components/SeguimientoEstudiantes';
 import { 
   FileSpreadsheet, 
   CalendarCheck, 
   Award, 
   BookMarked, 
   Sparkles,
-  Cloud
+  Cloud,
+  UserCheck
 } from 'lucide-react';
 
 export default function App() {
@@ -35,11 +38,26 @@ export default function App() {
 
   const [grupos, setGrupos] = useState<Grupo[]>(() => {
     try {
+      const cleanApplied = localStorage.getItem('meduca_clean_activities_v2');
       const saved = localStorage.getItem('meduca_grupos');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (!cleanApplied) {
+            // Apply clean activities: strip preloaded activities and sample grades
+            const cleaned = parsed.map((g: Grupo) => ({
+              ...g,
+              actividades: { 1: [], 2: [], 3: [] },
+              notas: { 1: {}, 2: {}, 3: {} }
+            }));
+            localStorage.setItem('meduca_clean_activities_v2', 'true');
+            localStorage.setItem('meduca_grupos', JSON.stringify(cleaned));
+            return cleaned;
+          }
+          return parsed;
+        }
       }
+      localStorage.setItem('meduca_clean_activities_v2', 'true');
     } catch (e) {
       console.error(e);
     }
@@ -79,7 +97,7 @@ export default function App() {
   });
 
   // --- UI Navigation State ---
-  const [tabPrincipal, setTabPrincipal] = useState<'notas' | 'asistencia' | 'boletin' | 'secuencias' | 'workspace'>('notas');
+  const [tabPrincipal, setTabPrincipal] = useState<'notas' | 'asistencia' | 'boletin' | 'secuencias' | 'seguimiento' | 'herramientas' | 'workspace'>('notas');
   const [trimestreNotas, setTrimestreNotas] = useState<1 | 2 | 3>(1);
   const [trimestreAsistencia, setTrimestreAsistencia] = useState<1 | 2 | 3>(1);
   const [semanaActual, setSemanaActual] = useState<number>(0);
@@ -232,6 +250,38 @@ export default function App() {
       return next;
     });
     triggerAutoSaveToast(`Nota ${valor.toFixed(1)} asignada a todos`);
+  };
+
+  const handleVaciarActividades = () => {
+    setGrupos((prev) => {
+      const next = [...prev];
+      const targetGrupo = { ...next[safeGrupoIndex] };
+      const currentActividades = { ...(targetGrupo.actividades || {}) };
+      currentActividades[trimestreNotas] = [];
+      targetGrupo.actividades = currentActividades;
+
+      // Clear notas for this trimester
+      const currentNotas = { ...targetGrupo.notas };
+      currentNotas[trimestreNotas] = {};
+      targetGrupo.notas = currentNotas;
+
+      next[safeGrupoIndex] = targetGrupo;
+      return next;
+    });
+    triggerAutoSaveToast('Actividades vaciadas para este trimestre');
+  };
+
+  const handleUpdateEstudianteSeguimiento = (estudianteId: string, updated: Partial<Estudiante>) => {
+    setGrupos((prev) => {
+      const next = [...prev];
+      const targetGrupo = { ...next[safeGrupoIndex] };
+      targetGrupo.estudiantes = targetGrupo.estudiantes.map((e) =>
+        e.id === estudianteId ? { ...e, ...updated } : e
+      );
+      next[safeGrupoIndex] = targetGrupo;
+      return next;
+    });
+    triggerAutoSaveToast('Seguimiento guardado');
   };
 
   // --- Attendance Handlers ---
@@ -564,6 +614,30 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => setTabPrincipal('seguimiento')}
+            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
+              tabPrincipal === 'seguimiento'
+                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
+                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
+            }`}
+          >
+            <UserCheck className={`w-4 h-4 ${tabPrincipal === 'seguimiento' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
+            <span>SEGUIMIENTO A ESTUDIANTES</span>
+          </button>
+
+          <button
+            onClick={() => setTabPrincipal('herramientas')}
+            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
+              tabPrincipal === 'herramientas'
+                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
+                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
+            }`}
+          >
+            <Sparkles className={`w-4 h-4 ${tabPrincipal === 'herramientas' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
+            <span>HERRAMIENTAS DE AULA</span>
+          </button>
+
+          <button
             onClick={() => setTabPrincipal('workspace')}
             className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
               tabPrincipal === 'workspace'
@@ -589,6 +663,7 @@ export default function App() {
               onEditarActividad={handleEditarActividad}
               onEliminarActividad={handleEliminarActividad}
               onAsignarNotaMasiva={handleAsignarNotaMasiva}
+              onVaciarActividades={handleVaciarActividades}
             />
           )}
 
@@ -626,6 +701,22 @@ export default function App() {
               onEliminarSecuencia={handleEliminarSecuencia}
               onDuplicarSecuencia={handleDuplicarSecuencia}
               onImprimir={() => window.print()}
+            />
+          )}
+
+          {tabPrincipal === 'seguimiento' && (
+            <SeguimientoEstudiantes
+              grupo={currentGrupo}
+              config={config}
+              onUpdateEstudiante={handleUpdateEstudianteSeguimiento}
+              trimestreActual={trimestreNotas}
+            />
+          )}
+
+          {tabPrincipal === 'herramientas' && (
+            <HerramientasAula
+              grupo={currentGrupo}
+              docente={config.docente}
             />
           )}
 

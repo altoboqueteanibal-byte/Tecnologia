@@ -24,6 +24,7 @@ interface ModalGestionarActividadesProps {
   onEditarActividad: (actividadId: string, nombre: string, tipo: TipoActividadEvaluacion) => void;
   onEliminarActividad: (actividadId: string) => void;
   onAsignarNotaMasiva?: (actividadId: string, valor: number) => void;
+  onVaciarActividades?: () => void;
 }
 
 const TIPOS_ACTIVIDAD: { tipo: TipoActividadEvaluacion; color: string; icon: string }[] = [
@@ -44,7 +45,8 @@ export const ModalGestionarActividades: React.FC<ModalGestionarActividadesProps>
   onAgregarActividad,
   onEditarActividad,
   onEliminarActividad,
-  onAsignarNotaMasiva
+  onAsignarNotaMasiva,
+  onVaciarActividades
 }) => {
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState<TipoActividadEvaluacion>('Taller');
@@ -379,9 +381,23 @@ export const ModalGestionarActividades: React.FC<ModalGestionarActividadesProps>
         </div>
 
         {/* Footer */}
-        <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
-          <div>
-            Total: <strong>{actividades.length}</strong> columnas de evaluación en Trimestre {trimestre}.
+        <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 shrink-0">
+          <div className="flex items-center gap-3">
+            <span>Total: <strong>{actividades.length}</strong> columnas en Trimestre {trimestre}.</span>
+            {actividades.length > 0 && onVaciarActividades && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`¿Vaciar todas las ${actividades.length} actividades del Trimestre ${trimestre}? Esta acción eliminará todas las columnas y notas asociadas en este trimestre.`)) {
+                    onVaciarActividades();
+                  }
+                }}
+                className="text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Vaciar Todas</span>
+              </button>
+            )}
           </div>
           <button
             onClick={onClose}
