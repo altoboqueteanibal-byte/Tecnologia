@@ -15,6 +15,28 @@ export const GRUPOS_INICIALES: Grupo[] = [
       { id: 'est-7', nombre: 'Rodríguez Cueva, Héctor', cedula: '4-833-119', acudiente: 'Héctor Rodríguez Sr.', telefono: '6712-8841' },
       { id: 'est-8', nombre: 'Santos Tugrí, Iris Sofía', cedula: '12-720-650', acudiente: 'Luzmila Tugrí', telefono: '6901-5522' }
     ],
+    actividades: {
+      1: [
+        { id: '1', nombre: 'Taller 1: Partes de la Computadora', tipo: 'Taller', fecha: '2026-03-09' },
+        { id: '2', nombre: 'Práctica: Manejo del Ratón y Paint', tipo: 'Laboratorio', fecha: '2026-03-23' },
+        { id: '3', nombre: 'Digitación: El Teclado y Vocales', tipo: 'Taller', fecha: '2026-04-06' },
+        { id: '4', nombre: 'Tarea: Normas de Cuidado del Equipo', tipo: 'Tarea', fecha: '2026-04-20' },
+        { id: '5', nombre: 'Investigación: Almacenamiento Digital', tipo: 'Investigación', fecha: '2026-05-04' },
+        { id: '6', nombre: 'Laboratorio: Organización de Carpetas', tipo: 'Laboratorio', fecha: '2026-05-18' },
+        { id: '7', nombre: 'Proyecto: Guía Ilustrada de Hardware', tipo: 'Proyecto', fecha: '2026-06-01' },
+        { id: '8', nombre: 'Parcial: Evaluación Sumativa Trimestre I', tipo: 'Parcial', fecha: '2026-06-15' }
+      ],
+      2: [
+        { id: '1', nombre: 'Taller: Introducción a Presentaciones', tipo: 'Taller', fecha: '2026-07-06' },
+        { id: '2', nombre: 'Laboratorio: Inserción de Imágenes', tipo: 'Laboratorio', fecha: '2026-07-20' },
+        { id: '3', nombre: 'Tarea: Paletas de Color y Diseño', tipo: 'Tarea', fecha: '2026-08-03' },
+        { id: '4', nombre: 'Proyecto: Exposición Oral Multimedia', tipo: 'Proyecto', fecha: '2026-08-17' }
+      ],
+      3: [
+        { id: '1', nombre: 'Taller: Navegación y Búsqueda Segura', tipo: 'Taller', fecha: '2026-09-21' },
+        { id: '2', nombre: 'Laboratorio: Scratch y Animaciones', tipo: 'Laboratorio', fecha: '2026-10-05' }
+      ]
+    },
     notas: {
       1: {
         '0_1': 4.5, '0_2': 4.2, '0_3': 4.8, '0_4': 4.0, '0_5': 4.6, '0_6': 4.3, '0_7': 4.7, '0_8': 4.5,

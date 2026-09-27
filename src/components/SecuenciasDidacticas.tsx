@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SecuenciaDidactica, AppConfig } from '../types';
+import { ModalEscogerTemaSubtema } from './ModalEscogerTemaSubtema';
 import { 
   Printer, 
   Search, 
@@ -9,7 +10,14 @@ import {
   Check, 
   RotateCcw,
   Sparkles,
-  BookOpen
+  BookOpen,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Copy,
+  Layers,
+  ArrowUpDown,
+  Compass
 } from 'lucide-react';
 import { obtenerRangoFechasQuincenal } from '../utils/dateUtils';
 
@@ -18,6 +26,9 @@ interface SecuenciasDidacticasProps {
   config: AppConfig;
   onUpdateSecuencia: (id: string, updated: Partial<SecuenciaDidactica>) => void;
   onCrearSecuencia: (nueva: SecuenciaDidactica) => void;
+  onReordenarSecuencias?: (nuevas: SecuenciaDidactica[]) => void;
+  onEliminarSecuencia?: (id: string) => void;
+  onDuplicarSecuencia?: (sec: SecuenciaDidactica) => void;
   onImprimir: () => void;
 }
 
@@ -26,12 +37,18 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
   config,
   onUpdateSecuencia,
   onCrearSecuencia,
+  onReordenarSecuencias,
+  onEliminarSecuencia,
+  onDuplicarSecuencia,
   onImprimir
 }) => {
   const [gradoFiltro, setGradoFiltro] = useState<string>('5°');
   const [trimestreFiltro, setTrimestreFiltro] = useState<string>('Todos');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [secuenciaSeleccionadaId, setSecuenciaSeleccionadaId] = useState<string | null>(null);
+  
+  // Topic picker modal state
+  const [modalTemaOpen, setModalTemaOpen] = useState(false);
+  const [secuenciaParaTema, setSecuenciaParaTema] = useState<SecuenciaDidactica | null>(null);
 
   // Filtered sequences
   const secuenciasFiltradas = secuencias.filter((sec) => {
@@ -41,6 +58,8 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
       const q = searchTerm.toLowerCase();
       const match =
         sec.area.toLowerCase().includes(q) ||
+        (sec.tema && sec.tema.toLowerCase().includes(q)) ||
+        (sec.subtema && sec.subtema.toLowerCase().includes(q)) ||
         sec.conceptual.toLowerCase().includes(q) ||
         sec.objetivo.toLowerCase().includes(q) ||
         sec.indicador.toLowerCase().includes(q);
@@ -57,10 +76,12 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
       trimestre: trimestreFiltro === 'Todos' ? 'PRIMERO' : (trimestreFiltro as any),
       semana: `${(secuenciasFiltradas.length * 2) + 1} - ${(secuenciasFiltradas.length * 2) + 2}`,
       area: 'Manejo de Programas y Pensamiento Computacional',
+      tema: 'Herramientas Digitales y Aprendizaje Activo',
+      subtema: 'Aplicaciones prácticas y producción de contenidos educativos',
       objetivo: 'Describir los componentes y aplicaciones prácticas de las herramientas informáticas escolares.',
       competencia: 'Aplica de manera reflexiva y autónoma las tecnologías en proyectos de aprendizaje.',
-      conceptual: 'Contenidos conceptuales clave y vocabulario técnico elemental.',
-      procedimental: 'Práctica guiada en el laboratorio y elaboración de productos digitales.',
+      conceptual: 'Contenidos conceptuales clave, vocabulario técnico elemental y normas de seguridad.',
+      procedimental: 'Práctica guiada en el laboratorio y elaboración de productos digitales en equipo.',
       actitudinal: 'Responsabilidad y colaboración en el uso de los equipos informáticos.',
       indicador: 'Demuestra el dominio procedimental y conceptual en las actividades asignadas.',
       act_inicio: 'Lluvia de ideas y exploración de conocimientos previos con preguntas guía.',
@@ -71,7 +92,94 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
       tipo_eval: 'Formativa (observación y retroalimentación) y Sumativa (rúbrica del producto final).'
     };
     onCrearSecuencia(nueva);
-    setSecuenciaSeleccionadaId(nuevaId);
+    setSecuenciaParaTema(nueva);
+    setModalTemaOpen(true);
+  };
+
+  const handleAbrirSelectorTema = (sec: SecuenciaDidactica) => {
+    setSecuenciaParaTema(sec);
+    setModalTemaOpen(true);
+  };
+
+  const handleOrdenarPorLogica = () => {
+    if (!onReordenarSecuencias) return;
+
+    const gradoOrder: Record<string, number> = {
+      '3°': 1,
+      '4°': 2,
+      '5°': 3,
+      '6°': 4,
+      'Multigrado': 5
+    };
+
+    const trimOrder: Record<string, number> = {
+      'PRIMERO': 1,
+      'SEGUNDO': 2,
+      'TERCERO': 3
+    };
+
+    const sorted = [...secuencias].sort((a, b) => {
+      // 1. Grado
+      const gA = gradoOrder[a.grado] || 99;
+      const gB = gradoOrder[b.grado] || 99;
+      if (gA !== gB) return gA - gB;
+
+      // 2. Trimestre
+      const tA = trimOrder[a.trimestre] || 99;
+      const tB = trimOrder[b.trimestre] || 99;
+      if (tA !== tB) return tA - tB;
+
+      // 3. Semana number
+      const numA = parseInt(a.semana.split('-')[0].trim(), 10) || 0;
+      const numB = parseInt(b.semana.split('-')[0].trim(), 10) || 0;
+      return numA - numB;
+    });
+
+    onReordenarSecuencias(sorted);
+  };
+
+  const handleMover = (index: number, direccion: 'arriba' | 'abajo') => {
+    if (!onReordenarSecuencias) return;
+
+    // We swap within secuencias using the IDs of filtered items
+    const targetItem = secuenciasFiltradas[index];
+    const swapItem = secuenciasFiltradas[direccion === 'arriba' ? index - 1 : index + 1];
+    if (!targetItem || !swapItem) return;
+
+    const fullIndexTarget = secuencias.findIndex((s) => s.id === targetItem.id);
+    const fullIndexSwap = secuencias.findIndex((s) => s.id === swapItem.id);
+
+    if (fullIndexTarget === -1 || fullIndexSwap === -1) return;
+
+    const newSecuencias = [...secuencias];
+    const temp = newSecuencias[fullIndexTarget];
+    newSecuencias[fullIndexTarget] = newSecuencias[fullIndexSwap];
+    newSecuencias[fullIndexSwap] = temp;
+
+    onReordenarSecuencias(newSecuencias);
+  };
+
+  const handleDuplicar = (sec: SecuenciaDidactica) => {
+    if (onDuplicarSecuencia) {
+      onDuplicarSecuencia(sec);
+    } else {
+      const duplicada: SecuenciaDidactica = {
+        ...sec,
+        id: `sec-dup-${Date.now()}`,
+        tema: `${sec.tema || sec.area} (Copia)`
+      };
+      onCrearSecuencia(duplicada);
+    }
+  };
+
+  const handleEliminar = (id: string, temaTitulo?: string) => {
+    if (confirm(`¿Eliminar la secuencia "${temaTitulo || 'Seleccionada'}"?`)) {
+      if (onEliminarSecuencia) {
+        onEliminarSecuencia(id);
+      } else if (onReordenarSecuencias) {
+        onReordenarSecuencias(secuencias.filter((s) => s.id !== id));
+      }
+    }
   };
 
   return (
@@ -84,12 +192,21 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
               <BookOpen className="w-5 h-5 text-[#c9a84c]" />
               <span>PLANIFICADOR DE SECUENCIAS DIDÁCTICAS · MEDUCA</span>
             </h2>
-            <p className="text-xs text-slate-500">
-              Formato oficial semanal / quincenal para Educación Básica General (3°, 4°, 5° y 6° Grado)
+            <p className="text-xs text-slate-500 mt-0.5">
+              Formato semanal / quincenal oficial. Revisa secuencias ordenadas por lógica pedagógica y escoge temas y subtemas a conveniencia.
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleOrdenarPorLogica}
+              title="Reordenar automáticamente por Grado (3° a 6°) → Trimestre (T1 a T3) → Semana correlativa"
+              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-200"
+            >
+              <ArrowUpDown className="w-4 h-4 text-[#c9a84c]" />
+              <span>Ordenar por Lógica Curricular</span>
+            </button>
+
             <button
               onClick={handleCrearNueva}
               className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
@@ -97,6 +214,7 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
               <Plus className="w-4 h-4" />
               <span>Nueva Secuencia</span>
             </button>
+
             <button
               onClick={onImprimir}
               className="px-4 py-1.5 bg-gradient-to-r from-[#c9a84c] to-[#a8893a] hover:from-[#d5b65a] hover:to-[#b89844] text-[#0a1628] rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-md active:scale-95"
@@ -115,11 +233,11 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
               Grado Curricular
             </label>
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-              {['Todos', '3°', '4°', '5°', '6°'].map((gr) => (
+              {['Todos', '3°', '4°', '5°', '6°', 'Multigrado'].map((gr) => (
                 <button
                   key={gr}
                   onClick={() => setGradoFiltro(gr)}
-                  className={`flex-1 py-1 px-1.5 rounded text-xs font-bold transition-all ${
+                  className={`flex-1 py-1 px-1 rounded text-[11px] font-bold transition-all ${
                     gradoFiltro === gr
                       ? 'bg-[#c9a84c] text-[#0a1628] shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -156,7 +274,7 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
           {/* Search Input */}
           <div className="lg:col-span-2">
             <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Buscar por Tema o Contenido
+              Buscar por Tema, Subtema o Contenido
             </label>
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
@@ -164,19 +282,20 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar (ej. Scratch, hardware, teclado, internet, hoja de cálculo)..."
+                placeholder="Buscar (ej. Scratch, hardware, teclado, internet, hoja de cálculo, redes)..."
                 className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#c9a84c]"
               />
             </div>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
+        <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 gap-2">
           <div>
             Mostrando <strong>{secuenciasFiltradas.length}</strong> de {secuencias.length} secuencias didácticas disponibles.
           </div>
-          <div className="text-[11px] text-slate-400 italic">
-            💡 Puedes hacer clic y editar directamente cualquier texto en las tablas oficiales abajo.
+          <div className="text-[11px] text-slate-500 flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-[#c9a84c]" />
+            <span>Haz clic en <strong>"🎯 Escoger Tema / Subtema"</strong> en cualquier secuencia para cambiar sus contenidos a conveniencia.</span>
           </div>
         </div>
       </div>
@@ -204,13 +323,81 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
                 className="bg-white border-2 border-slate-300 rounded-xl p-4 md:p-6 shadow-sm page-break-after relative"
                 style={{ fontFamily: "'Times New Roman', Times, serif" }}
               >
-                {/* Trimestre Badge */}
-                <div className="mb-2 flex items-center justify-between">
+                {/* Top Control Bar (no-print) */}
+                <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 no-print bg-slate-50 p-2 rounded-lg border border-slate-200">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="bg-[#1a3d5c] text-white px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide">
+                      TRIMESTRE {sec.trimestre} · GRADO {sec.grado}
+                    </span>
+                    <span className="text-xs font-bold text-slate-700">
+                      Secuencia #{idx + 1} de {secuenciasFiltradas.length}
+                    </span>
+                    {sec.tema && (
+                      <span className="text-xs font-semibold text-slate-600 bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                        📌 {sec.tema}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Actions: Pick Topic, Move up/down, Duplicate, Delete */}
+                  <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => handleAbrirSelectorTema(sec)}
+                      className="px-2.5 py-1 bg-[#0a1628] hover:bg-[#1a2a4a] text-white rounded text-xs font-bold flex items-center gap-1 shadow-2xs"
+                      title="Escoger o cambiar Tema y Subtema curricular"
+                    >
+                      <Compass className="w-3.5 h-3.5 text-[#c9a84c]" />
+                      <span>🎯 Escoger Tema / Subtema</span>
+                    </button>
+
+                    {onReordenarSecuencias && (
+                      <div className="flex items-center gap-0.5 border border-slate-300 rounded bg-white">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMover(idx, 'arriba')}
+                          title="Mover secuencia arriba"
+                          className="p-1 hover:bg-slate-100 disabled:opacity-30 text-slate-700"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === secuenciasFiltradas.length - 1}
+                          onClick={() => handleMover(idx, 'abajo')}
+                          title="Mover secuencia abajo"
+                          className="p-1 hover:bg-slate-100 disabled:opacity-30 text-slate-700"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicar(sec)}
+                      title="Duplicar esta secuencia didáctica"
+                      className="p-1 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleEliminar(sec.id, sec.tema || sec.area)}
+                      title="Eliminar secuencia"
+                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Print Trimester Badge */}
+                <div className="mb-2 print-only hidden">
                   <span className="inline-block bg-[#1a3d5c] text-white px-3 py-0.5 rounded-full text-xs font-bold tracking-wide">
-                    TRIMESTRE {sec.trimestre} · GRADO {sec.grado}
-                  </span>
-                  <span className="text-[11px] text-slate-500 no-print">
-                    Secuencia #{idx + 1}
+                    TRIMESTRE {sec.trimestre} · GRADO {sec.grado} · SEMANAS {sec.semana}
                   </span>
                 </div>
 
@@ -235,9 +422,16 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
                   <div>SEMANA: <span className="font-normal">{sec.semana}</span></div>
                 </div>
 
-                {/* Date range row */}
-                <div className="font-bold text-[11px] border-b border-slate-300 pb-1 mb-2 text-slate-800">
-                  SEMANA: del {rango.inicio} al {rango.fin}
+                {/* Date range row & Topic headline */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between font-bold text-[11px] border-b border-slate-300 pb-1.5 mb-2 text-slate-800 gap-1">
+                  <div>
+                    SEMANA: del <span className="font-normal">{rango.inicio}</span> al <span className="font-normal">{rango.fin}</span>
+                  </div>
+                  {sec.tema && (
+                    <div className="text-slate-900">
+                      TEMA PRINCIPAL: <span className="text-[#1a3d5c] font-black">{sec.tema}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Main 2-Column Table */}
@@ -249,9 +443,10 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
                         <td className="w-1/2 p-0 align-top border-r border-slate-900">
                           <table className="w-full border-collapse">
                             <tbody>
+                              {/* ÁREA */}
                               <tr>
                                 <td colSpan={2} className="bg-slate-200 text-slate-900 font-bold p-1 text-center border-b border-slate-900">
-                                  ÁREA:
+                                  ÁREA CURRICULAR:
                                 </td>
                               </tr>
                               <tr>
@@ -265,6 +460,47 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
                                 </td>
                               </tr>
 
+                              {/* TEMA Y SUBTEMA SELECCIONADOS */}
+                              <tr className="bg-amber-50/60">
+                                <td colSpan={2} className="p-1.5 border-b border-slate-900">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-bold text-slate-900 uppercase text-[10px]">
+                                      TEMA Y SUBTEMA (Escogidos a conveniencia):
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAbrirSelectorTema(sec)}
+                                      className="text-[10px] text-[#1a3d5c] hover:underline font-bold no-print"
+                                    >
+                                      Cambiar Tema...
+                                    </button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-slate-700 w-16 shrink-0">Tema:</span>
+                                      <input
+                                        type="text"
+                                        value={sec.tema || ''}
+                                        onChange={(e) => onUpdateSecuencia(sec.id, { tema: e.target.value })}
+                                        placeholder="Escribe o escoge el tema curricular..."
+                                        className="w-full bg-transparent focus:bg-white border-b border-slate-300 focus:border-slate-800 focus:outline-none font-bold text-slate-900"
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-slate-700 w-16 shrink-0">Subtema:</span>
+                                      <input
+                                        type="text"
+                                        value={sec.subtema || ''}
+                                        onChange={(e) => onUpdateSecuencia(sec.id, { subtema: e.target.value })}
+                                        placeholder="Subtema específico..."
+                                        className="w-full bg-transparent focus:bg-white border-b border-slate-300 focus:border-slate-800 focus:outline-none text-slate-800"
+                                      />
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+
+                              {/* COMPETENCIAS */}
                               <tr>
                                 <td colSpan={2} className="bg-slate-200 text-slate-900 font-bold p-1 text-center border-y border-slate-900">
                                   COMPETENCIA(S):
@@ -281,6 +517,7 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
                                 </td>
                               </tr>
 
+                              {/* OBJETIVO */}
                               <tr>
                                 <td colSpan={2} className="bg-slate-200 text-slate-900 font-bold p-1 text-center border-y border-slate-900">
                                   OBJETIVO(S) DE APRENDIZAJE:
@@ -297,6 +534,7 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
                                 </td>
                               </tr>
 
+                              {/* CONTENIDOS */}
                               <tr>
                                 <td colSpan={2} className="bg-slate-200 text-slate-900 font-bold p-1 text-center border-y border-slate-900">
                                   CONTENIDOS:
@@ -336,6 +574,7 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
                                 </td>
                               </tr>
 
+                              {/* INDICADORES */}
                               <tr>
                                 <td colSpan={2} className="bg-slate-200 text-slate-900 font-bold p-1 text-center border-b border-slate-900">
                                   INDICADOR(ES) DE LOGRO:
@@ -477,6 +716,19 @@ export const SecuenciasDidacticas: React.FC<SecuenciasDidacticasProps> = ({
           })
         )}
       </div>
+
+      {/* Modal to pick / customize themes and subthemes */}
+      <ModalEscogerTemaSubtema
+        isOpen={modalTemaOpen}
+        onClose={() => {
+          setModalTemaOpen(false);
+          setSecuenciaParaTema(null);
+        }}
+        secuenciaActual={secuenciaParaTema}
+        onAplicarTema={(id, datos) => {
+          onUpdateSecuencia(id, datos);
+        }}
+      />
     </div>
   );
 };

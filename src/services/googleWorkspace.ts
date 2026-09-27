@@ -56,12 +56,18 @@ export async function exportarGrupoAGoogleSheets(
   rows.push([`Docente: ${config.docente}`, '', `Grupo: ${grupo.nombre}`, '', `Asignatura: ${config.asignatura}`]);
   rows.push([]); // blank
 
+  // Dynamic activity columns for this trimester
+  const actividades = grupo.actividades?.[trimestre] || [];
+  const actHeaders = actividades.length > 0
+    ? actividades.map(a => `${a.nombre} (${a.tipo})`)
+    : ['N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'N8'];
+
   // Column table headers
   rows.push([
     'N°',
     'CÉDULA',
     'APELLIDOS Y NOMBRES',
-    'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'N8',
+    ...actHeaders,
     'PROMEDIO',
     'ESTADO'
   ]);
@@ -73,14 +79,27 @@ export async function exportarGrupoAGoogleSheets(
     let count = 0;
     const notasList: (number | string)[] = [];
 
-    for (let n = 1; n <= 8; n++) {
-      const val = notasTrimestre[`${idx}_${n}`];
-      if (val !== undefined && val !== null && !isNaN(val)) {
-        notasList.push(val);
-        suma += val;
-        count++;
-      } else {
-        notasList.push('');
+    if (actividades.length > 0) {
+      actividades.forEach((act) => {
+        const val = notasTrimestre[`${idx}_${act.id}`];
+        if (val !== undefined && val !== null && !isNaN(val)) {
+          notasList.push(val);
+          suma += val;
+          count++;
+        } else {
+          notasList.push('');
+        }
+      });
+    } else {
+      for (let n = 1; n <= 8; n++) {
+        const val = notasTrimestre[`${idx}_${n}`];
+        if (val !== undefined && val !== null && !isNaN(val)) {
+          notasList.push(val);
+          suma += val;
+          count++;
+        } else {
+          notasList.push('');
+        }
       }
     }
 

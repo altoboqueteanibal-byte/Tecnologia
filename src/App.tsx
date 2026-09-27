@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grupo, AppConfig, SecuenciaDidactica, RespaldoItem, TipoAsistencia, Estudiante } from './types';
+import { Grupo, AppConfig, SecuenciaDidactica, RespaldoItem, TipoAsistencia, Estudiante, TipoActividadEvaluacion, ActividadEvaluacion } from './types';
 import { GRUPOS_INICIALES, CONFIG_INICIAL } from './data/gruposDefault';
 import { SECUENCIAS_INICIALES } from './data/secuenciasDefault';
 import { HeaderInstitucional } from './components/HeaderInstitucional';
@@ -127,14 +127,14 @@ export default function App() {
   const currentGrupo = grupos[safeGrupoIndex] || grupos[0];
 
   // --- Gradebook Handlers ---
-  const handleUpdateNota = (estudianteIdx: number, notaNum: number, valor: number | null) => {
+  const handleUpdateNota = (estudianteIdx: number, actividadId: string, valor: number | null) => {
     setGrupos((prev) => {
       const next = [...prev];
       const targetGrupo = { ...next[safeGrupoIndex] };
       const targetNotas = { ...targetGrupo.notas };
       const currentTrimNotas = { ...(targetNotas[trimestreNotas] || {}) };
 
-      const key = `${estudianteIdx}_${notaNum}`;
+      const key = `${estudianteIdx}_${actividadId}`;
       if (valor === null || isNaN(valor)) {
         delete currentTrimNotas[key];
       } else {
@@ -147,6 +147,91 @@ export default function App() {
       return next;
     });
     triggerAutoSaveToast('Nota actualizada');
+  };
+
+  const handleAgregarActividad = (nombre: string, tipo: TipoActividadEvaluacion, fecha?: string) => {
+    setGrupos((prev) => {
+      const next = [...prev];
+      const targetGrupo = { ...next[safeGrupoIndex] };
+      const targetActividades = { ...(targetGrupo.actividades || {}) };
+      const currentList = [...(targetActividades[trimestreNotas] || [])];
+
+      const nuevaAct: ActividadEvaluacion = {
+        id: `act-${Date.now()}-${currentList.length + 1}`,
+        nombre: nombre.trim(),
+        tipo,
+        fecha: fecha || new Date().toISOString().split('T')[0]
+      };
+
+      targetActividades[trimestreNotas] = [...currentList, nuevaAct];
+      targetGrupo.actividades = targetActividades;
+      next[safeGrupoIndex] = targetGrupo;
+      return next;
+    });
+    triggerAutoSaveToast(`Columna "${nombre}" agregada`);
+  };
+
+  const handleEditarActividad = (actividadId: string, nuevoNombre: string, nuevoTipo: TipoActividadEvaluacion) => {
+    setGrupos((prev) => {
+      const next = [...prev];
+      const targetGrupo = { ...next[safeGrupoIndex] };
+      const targetActividades = { ...(targetGrupo.actividades || {}) };
+      const currentList = [...(targetActividades[trimestreNotas] || [])];
+
+      targetActividades[trimestreNotas] = currentList.map((a) =>
+        a.id === actividadId ? { ...a, nombre: nuevoNombre, tipo: nuevoTipo } : a
+      );
+      targetGrupo.actividades = targetActividades;
+      next[safeGrupoIndex] = targetGrupo;
+      return next;
+    });
+    triggerAutoSaveToast('Actividad actualizada');
+  };
+
+  const handleEliminarActividad = (actividadId: string) => {
+    setGrupos((prev) => {
+      const next = [...prev];
+      const targetGrupo = { ...next[safeGrupoIndex] };
+      const targetActividades = { ...(targetGrupo.actividades || {}) };
+      const currentList = targetActividades[trimestreNotas] || [];
+
+      targetActividades[trimestreNotas] = currentList.filter((a) => a.id !== actividadId);
+      targetGrupo.actividades = targetActividades;
+
+      // Remove notes associated with this activity
+      const targetNotas = { ...targetGrupo.notas };
+      const currentNotas = { ...(targetNotas[trimestreNotas] || {}) };
+      Object.keys(currentNotas).forEach((k) => {
+        if (k.endsWith(`_${actividadId}`)) {
+          delete currentNotas[k];
+        }
+      });
+      targetNotas[trimestreNotas] = currentNotas;
+      targetGrupo.notas = targetNotas;
+
+      next[safeGrupoIndex] = targetGrupo;
+      return next;
+    });
+    triggerAutoSaveToast('Columna eliminada');
+  };
+
+  const handleAsignarNotaMasiva = (actividadId: string, valor: number) => {
+    setGrupos((prev) => {
+      const next = [...prev];
+      const targetGrupo = { ...next[safeGrupoIndex] };
+      const targetNotas = { ...targetGrupo.notas };
+      const currentNotas = { ...(targetNotas[trimestreNotas] || {}) };
+
+      targetGrupo.estudiantes.forEach((_, idx) => {
+        currentNotas[`${idx}_${actividadId}`] = valor;
+      });
+
+      targetNotas[trimestreNotas] = currentNotas;
+      targetGrupo.notas = targetNotas;
+      next[safeGrupoIndex] = targetGrupo;
+      return next;
+    });
+    triggerAutoSaveToast(`Nota ${valor.toFixed(1)} asignada a todos`);
   };
 
   // --- Attendance Handlers ---
@@ -298,6 +383,26 @@ export default function App() {
   const handleCrearSecuencia = (nueva: SecuenciaDidactica) => {
     setSecuencias((prev) => [nueva, ...prev]);
     triggerAutoSaveToast('Secuencia agregada');
+  };
+
+  const handleReordenarSecuencias = (nuevas: SecuenciaDidactica[]) => {
+    setSecuencias(nuevas);
+    triggerAutoSaveToast('Secuencias reordenadas');
+  };
+
+  const handleEliminarSecuencia = (id: string) => {
+    setSecuencias((prev) => prev.filter((s) => s.id !== id));
+    triggerAutoSaveToast('Secuencia eliminada');
+  };
+
+  const handleDuplicarSecuencia = (sec: SecuenciaDidactica) => {
+    const dup: SecuenciaDidactica = {
+      ...sec,
+      id: `sec-dup-${Date.now()}`,
+      tema: `${sec.tema || sec.area} (Copia)`
+    };
+    setSecuencias((prev) => [dup, ...prev]);
+    triggerAutoSaveToast('Secuencia duplicada');
   };
 
   // --- Backup and Restore Handlers ---
@@ -480,6 +585,10 @@ export default function App() {
               onSelectTrimestre={setTrimestreNotas}
               onUpdateNota={handleUpdateNota}
               onOpenEstudiantes={() => setShowModalEstudiantes(true)}
+              onAgregarActividad={handleAgregarActividad}
+              onEditarActividad={handleEditarActividad}
+              onEliminarActividad={handleEliminarActividad}
+              onAsignarNotaMasiva={handleAsignarNotaMasiva}
             />
           )}
 
@@ -513,6 +622,9 @@ export default function App() {
               config={config}
               onUpdateSecuencia={handleUpdateSecuencia}
               onCrearSecuencia={handleCrearSecuencia}
+              onReordenarSecuencias={handleReordenarSecuencias}
+              onEliminarSecuencia={handleEliminarSecuencia}
+              onDuplicarSecuencia={handleDuplicarSecuencia}
               onImprimir={() => window.print()}
             />
           )}

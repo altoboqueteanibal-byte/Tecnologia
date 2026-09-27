@@ -15,18 +15,34 @@ export const BoletinOficial: React.FC<BoletinOficialProps> = ({
 }) => {
   const estudiantes = grupo.estudiantes || [];
 
-  // Helper to compute average for a specific trimester
+  // Helper to compute average for a specific trimester across dynamic activities
   const getPromedioTrimestre = (estIdx: number, trimestre: 1 | 2 | 3): number | null => {
     const notas = grupo.notas[trimestre] || {};
+    const actividades = grupo.actividades?.[trimestre];
     let suma = 0;
     let count = 0;
-    for (let n = 1; n <= 8; n++) {
-      const val = notas[`${estIdx}_${n}`];
-      if (val !== undefined && val !== null && !isNaN(val)) {
-        suma += val;
-        count++;
-      }
+
+    if (actividades && actividades.length > 0) {
+      actividades.forEach((act) => {
+        const val = notas[`${estIdx}_${act.id}`];
+        if (val !== undefined && val !== null && !isNaN(val)) {
+          suma += val;
+          count++;
+        }
+      });
+    } else {
+      // Backward compatibility: check any keys matching this student in this trimester
+      Object.keys(notas).forEach((key) => {
+        if (key.startsWith(`${estIdx}_`)) {
+          const val = notas[key];
+          if (val !== undefined && val !== null && !isNaN(val)) {
+            suma += val;
+            count++;
+          }
+        }
+      });
     }
+
     return count > 0 ? suma / count : null;
   };
 
