@@ -11,12 +11,14 @@ import { ModalGestionarGrupos } from './components/ModalGestionarGrupos';
 import { ModalGestionarEstudiantes } from './components/ModalGestionarEstudiantes';
 import { ModalRespaldos } from './components/ModalRespaldos';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { GoogleWorkspacePanel } from './components/GoogleWorkspacePanel';
 import { 
   FileSpreadsheet, 
   CalendarCheck, 
   Award, 
   BookMarked, 
-  Sparkles
+  Sparkles,
+  Cloud
 } from 'lucide-react';
 
 export default function App() {
@@ -77,7 +79,7 @@ export default function App() {
   });
 
   // --- UI Navigation State ---
-  const [tabPrincipal, setTabPrincipal] = useState<'notas' | 'asistencia' | 'boletin' | 'secuencias'>('notas');
+  const [tabPrincipal, setTabPrincipal] = useState<'notas' | 'asistencia' | 'boletin' | 'secuencias' | 'workspace'>('notas');
   const [trimestreNotas, setTrimestreNotas] = useState<1 | 2 | 3>(1);
   const [trimestreAsistencia, setTrimestreAsistencia] = useState<1 | 2 | 3>(1);
   const [semanaActual, setSemanaActual] = useState<number>(0);
@@ -455,6 +457,18 @@ export default function App() {
             <BookMarked className={`w-4 h-4 ${tabPrincipal === 'secuencias' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
             <span>SECUENCIAS DIDÁCTICAS (3° A 6°)</span>
           </button>
+
+          <button
+            onClick={() => setTabPrincipal('workspace')}
+            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
+              tabPrincipal === 'workspace'
+                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
+                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
+            }`}
+          >
+            <Cloud className={`w-4 h-4 ${tabPrincipal === 'workspace' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
+            <span>GOOGLE WORKSPACE</span>
+          </button>
         </div>
 
         {/* Tab Content Display */}
@@ -500,6 +514,15 @@ export default function App() {
               onUpdateSecuencia={handleUpdateSecuencia}
               onCrearSecuencia={handleCrearSecuencia}
               onImprimir={() => window.print()}
+            />
+          )}
+
+          {tabPrincipal === 'workspace' && (
+            <GoogleWorkspacePanel
+              grupo={currentGrupo}
+              config={config}
+              secuencias={secuencias}
+              allGrupos={grupos}
             />
           )}
         </main>
