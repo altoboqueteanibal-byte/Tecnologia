@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Grupo, ActividadEvaluacion, TipoActividadEvaluacion } from '../types';
 import { ModalGestionarActividades } from './ModalGestionarActividades';
+import { GraficosDistribucionNotas } from './GraficosDistribucionNotas';
 import { 
   Award, 
   Users, 
@@ -15,7 +16,8 @@ import {
   FileSpreadsheet, 
   Zap, 
   HelpCircle,
-  Calendar
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 
 interface RegistroNotasProps {
@@ -50,6 +52,23 @@ export const RegistroNotas: React.FC<RegistroNotasProps> = ({
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickNombre, setQuickNombre] = useState('');
   const [quickTipo, setQuickTipo] = useState<TipoActividadEvaluacion>('Taller');
+  const [mostrarGraficos, setMostrarGraficos] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('meduca_mostrar_graficos_notas');
+      if (saved !== null) return JSON.parse(saved);
+    } catch (e) {}
+    return true;
+  });
+
+  const handleToggleGraficos = () => {
+    setMostrarGraficos((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('meduca_mostrar_graficos_notas', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
 
   // Extract dynamic activity columns for this trimester
   const actividadesTrimestre: ActividadEvaluacion[] = useMemo(() => {
@@ -197,6 +216,19 @@ export const RegistroNotas: React.FC<RegistroNotasProps> = ({
             <span>Gestionar Columnas ({actividadesTrimestre.length})</span>
           </button>
 
+          <button
+            onClick={handleToggleGraficos}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border shadow-2xs ${
+              mostrarGraficos
+                ? 'bg-[#0a1628] text-[#c9a84c] border-[#0a1628]'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+            }`}
+            title="Visualizar histograma y distribución de calificaciones con recharts"
+          >
+            <BarChart3 className={`w-4 h-4 ${mostrarGraficos ? 'text-[#c9a84c]' : 'text-slate-500'}`} />
+            <span>{mostrarGraficos ? 'Ocultar Gráficos' : 'Ver Gráficos'}</span>
+          </button>
+
           {/* Trimestre Selector */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
             {([1, 2, 3] as const).map((t) => (
@@ -266,6 +298,15 @@ export const RegistroNotas: React.FC<RegistroNotasProps> = ({
             </button>
           </div>
         </form>
+      )}
+
+      {/* Interactive Recharts Analytics & Histogram Component */}
+      {mostrarGraficos && estudiantes.length > 0 && (
+        <GraficosDistribucionNotas
+          grupo={grupo}
+          trimestreActual={trimestreActual}
+          actividadesTrimestre={actividadesTrimestre}
+        />
       )}
 
       {/* Empty State if no students */}

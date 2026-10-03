@@ -14,14 +14,18 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { GoogleWorkspacePanel } from './components/GoogleWorkspacePanel';
 import { HerramientasAula } from './components/HerramientasAula';
 import { SeguimientoEstudiantes } from './components/SeguimientoEstudiantes';
+import { Sidebar, TabPrincipalType } from './components/Sidebar';
 import { 
   FileSpreadsheet, 
   CalendarCheck, 
   Award, 
   BookMarked, 
-  Sparkles,
-  Cloud,
-  UserCheck
+  Sparkles, 
+  Cloud, 
+  UserCheck,
+  PanelLeftClose,
+  PanelLeft,
+  Menu
 } from 'lucide-react';
 
 export default function App() {
@@ -96,8 +100,28 @@ export default function App() {
     return [];
   });
 
+  // --- Sidebar & Navigation State ---
+  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('meduca_sidebar_expanded');
+      if (saved !== null) return JSON.parse(saved);
+    } catch (e) {}
+    return true;
+  });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleToggleSidebar = () => {
+    setSidebarExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('meduca_sidebar_expanded', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
   // --- UI Navigation State ---
-  const [tabPrincipal, setTabPrincipal] = useState<'notas' | 'asistencia' | 'boletin' | 'secuencias' | 'seguimiento' | 'herramientas' | 'workspace'>('notas');
+  const [tabPrincipal, setTabPrincipal] = useState<TabPrincipalType>('notas');
   const [trimestreNotas, setTrimestreNotas] = useState<1 | 2 | 3>(1);
   const [trimestreAsistencia, setTrimestreAsistencia] = useState<1 | 2 | 3>(1);
   const [semanaActual, setSemanaActual] = useState<number>(0);
@@ -545,109 +569,117 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] text-[#1a1a2e] flex flex-col font-sans pb-16">
-      <div className="max-w-[1600px] w-full mx-auto p-3 sm:p-4 md:p-6 flex-1">
-        {/* Institutional Header */}
-        <HeaderInstitucional
-          config={config}
-          onChangeConfig={setConfig}
-          grupos={grupos}
-          grupoActualIndex={safeGrupoIndex}
-          onSelectGrupo={setGrupoActualIndex}
-          onOpenGestionGrupos={() => setShowModalGrupos(true)}
-          onOpenGestionEstudiantes={() => setShowModalEstudiantes(true)}
-          onOpenRespaldos={() => setShowModalRespaldos(true)}
-          onExportarJSON={handleExportarJSON}
-          onImportarJSON={() => setShowModalRespaldos(true)}
-          onImprimir={() => window.print()}
-          autoSaveMessage={autoSaveMessage}
-        />
+    <div className="min-h-screen bg-[#f0f2f5] text-[#1a1a2e] flex font-sans">
+      {/* Collapsible Sidebar */}
+      <Sidebar
+        isExpanded={sidebarExpanded}
+        onToggleExpand={handleToggleSidebar}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+        activeTab={tabPrincipal}
+        onSelectTab={setTabPrincipal}
+        grupos={grupos}
+        grupoActualIndex={safeGrupoIndex}
+        onSelectGrupo={setGrupoActualIndex}
+        onOpenGestionGrupos={() => setShowModalGrupos(true)}
+        onOpenGestionEstudiantes={() => setShowModalEstudiantes(true)}
+        onOpenRespaldos={() => setShowModalRespaldos(true)}
+        onExportarJSON={handleExportarJSON}
+        onImprimir={() => window.print()}
+        config={config}
+      />
 
-        {/* Primary Functional Tabs */}
-        <div className="flex items-center gap-1.5 border-b border-[#d4c8b0] mb-6 overflow-x-auto no-print">
-          <button
-            onClick={() => setTabPrincipal('notas')}
-            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
-              tabPrincipal === 'notas'
-                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
-                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-            }`}
-          >
-            <FileSpreadsheet className={`w-4 h-4 ${tabPrincipal === 'notas' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
-            <span>CALIFICACIONES Y NOTAS</span>
-          </button>
+      {/* Main Content Area (Respects Collapsible Sidebar with smooth transition) */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${
+        sidebarExpanded ? 'md:pl-64 lg:pl-72' : 'md:pl-20'
+      }`}>
+        <div className="max-w-[1600px] w-full mx-auto p-3 sm:p-4 md:p-6 flex-1 pb-16">
+          {/* Institutional Header with Toggle Button */}
+          <HeaderInstitucional
+            config={config}
+            onChangeConfig={setConfig}
+            grupos={grupos}
+            grupoActualIndex={safeGrupoIndex}
+            onSelectGrupo={setGrupoActualIndex}
+            onOpenGestionGrupos={() => setShowModalGrupos(true)}
+            onOpenGestionEstudiantes={() => setShowModalEstudiantes(true)}
+            onOpenRespaldos={() => setShowModalRespaldos(true)}
+            onExportarJSON={handleExportarJSON}
+            onImportarJSON={() => setShowModalRespaldos(true)}
+            onImprimir={() => window.print()}
+            autoSaveMessage={autoSaveMessage}
+            onToggleSidebar={() => {
+              if (window.innerWidth < 768) {
+                setMobileMenuOpen(true);
+              } else {
+                handleToggleSidebar();
+              }
+            }}
+            isSidebarExpanded={sidebarExpanded}
+          />
 
-          <button
-            onClick={() => setTabPrincipal('asistencia')}
-            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
-              tabPrincipal === 'asistencia'
-                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
-                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-            }`}
-          >
-            <CalendarCheck className={`w-4 h-4 ${tabPrincipal === 'asistencia' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
-            <span>CONTROL DE ASISTENCIA</span>
-          </button>
+        {/* Active Module Context Bar (Replaces duplicated menu with clean header and controls) */}
+        <div className="bg-white border border-[#d4c8b0] rounded-xl p-3 md:p-4 mb-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#0a1628] text-[#c9a84c] flex items-center justify-center shrink-0 shadow-xs border border-[#c9a84c]/30">
+              {tabPrincipal === 'notas' && <FileSpreadsheet className="w-5 h-5" />}
+              {tabPrincipal === 'asistencia' && <CalendarCheck className="w-5 h-5" />}
+              {tabPrincipal === 'boletin' && <Award className="w-5 h-5" />}
+              {tabPrincipal === 'seguimiento' && <UserCheck className="w-5 h-5" />}
+              {tabPrincipal === 'herramientas' && <Sparkles className="w-5 h-5" />}
+              {tabPrincipal === 'secuencias' && <BookMarked className="w-5 h-5" />}
+              {tabPrincipal === 'workspace' && <Cloud className="w-5 h-5" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-[#0a1628]/5 text-[#0a1628] border border-[#0a1628]/10">
+                  MÓDULO ACTIVO
+                </span>
+                <span className="text-xs font-bold text-slate-500">
+                  {currentGrupo ? `${currentGrupo.nombre} · ${currentGrupo.estudiantes?.length || 0} estudiantes` : 'Tecnología'}
+                </span>
+              </div>
+              <h2 className="text-base md:text-lg font-black text-[#0a1628] tracking-tight">
+                {tabPrincipal === 'notas' && 'CALIFICACIONES Y REGISTRO DE NOTAS'}
+                {tabPrincipal === 'asistencia' && 'CONTROL DIARIO Y SEMANAL DE ASISTENCIA'}
+                {tabPrincipal === 'boletin' && 'BOLETÍN CONSOLIDADO DE CALIFICACIONES'}
+                {tabPrincipal === 'seguimiento' && 'SEGUIMIENTO INTEGRAL A ESTUDIANTES'}
+                {tabPrincipal === 'herramientas' && 'HERRAMIENTAS INTERACTIVAS DE AULA'}
+                {tabPrincipal === 'secuencias' && 'SECUENCIAS DIDÁCTICAS MEDUCA (3° A 6°)'}
+                {tabPrincipal === 'workspace' && 'INTEGRACIÓN CON GOOGLE WORKSPACE'}
+              </h2>
+            </div>
+          </div>
 
-          <button
-            onClick={() => setTabPrincipal('boletin')}
-            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
-              tabPrincipal === 'boletin'
-                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
-                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-            }`}
-          >
-            <Award className={`w-4 h-4 ${tabPrincipal === 'boletin' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
-            <span>BOLETÍN CONSOLIDADO</span>
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            {/* Mobile Open Sidebar */}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden px-3 py-1.5 rounded-lg bg-[#0a1628] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs hover:bg-[#11223b]"
+            >
+              <Menu className="w-4 h-4 text-[#c9a84c]" />
+              <span>Menú</span>
+            </button>
 
-          <button
-            onClick={() => setTabPrincipal('secuencias')}
-            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
-              tabPrincipal === 'secuencias'
-                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
-                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-            }`}
-          >
-            <BookMarked className={`w-4 h-4 ${tabPrincipal === 'secuencias' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
-            <span>SECUENCIAS DIDÁCTICAS (3° A 6°)</span>
-          </button>
-
-          <button
-            onClick={() => setTabPrincipal('seguimiento')}
-            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
-              tabPrincipal === 'seguimiento'
-                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
-                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-            }`}
-          >
-            <UserCheck className={`w-4 h-4 ${tabPrincipal === 'seguimiento' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
-            <span>SEGUIMIENTO A ESTUDIANTES</span>
-          </button>
-
-          <button
-            onClick={() => setTabPrincipal('herramientas')}
-            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
-              tabPrincipal === 'herramientas'
-                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
-                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-            }`}
-          >
-            <Sparkles className={`w-4 h-4 ${tabPrincipal === 'herramientas' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
-            <span>HERRAMIENTAS DE AULA</span>
-          </button>
-
-          <button
-            onClick={() => setTabPrincipal('workspace')}
-            className={`px-4 md:px-6 py-2.5 rounded-t-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-t border-x ${
-              tabPrincipal === 'workspace'
-                ? 'bg-white text-[#0a1628] border-[#d4c8b0] border-b-transparent shadow-xs font-extrabold'
-                : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-            }`}
-          >
-            <Cloud className={`w-4 h-4 ${tabPrincipal === 'workspace' ? 'text-[#c9a84c]' : 'text-slate-400'}`} />
-            <span>GOOGLE WORKSPACE</span>
-          </button>
+            {/* Desktop Toggle Sidebar */}
+            <button
+              onClick={handleToggleSidebar}
+              className="hidden md:flex px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold items-center gap-1.5 transition-colors border border-slate-200"
+              title={sidebarExpanded ? 'Colapsar menú lateral' : 'Expandir menú lateral'}
+            >
+              {sidebarExpanded ? (
+                <>
+                  <PanelLeftClose className="w-4 h-4 text-slate-500" />
+                  <span>Colapsar Menú</span>
+                </>
+              ) : (
+                <>
+                  <PanelLeft className="w-4 h-4 text-[#c9a84c]" />
+                  <span>Expandir Menú</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Tab Content Display */}
@@ -730,6 +762,7 @@ export default function App() {
           )}
         </main>
       </div>
+    </div>
 
       {/* Modals */}
       {showModalGrupos && (

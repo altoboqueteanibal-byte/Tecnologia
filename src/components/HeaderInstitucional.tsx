@@ -13,7 +13,10 @@ import {
   Printer, 
   CheckCircle2, 
   BookOpen, 
-  Layers
+  Layers,
+  PanelLeftClose,
+  PanelLeft,
+  Menu
 } from 'lucide-react';
 
 interface HeaderInstitucionalProps {
@@ -29,6 +32,8 @@ interface HeaderInstitucionalProps {
   onImportarJSON: () => void;
   onImprimir: () => void;
   autoSaveMessage: string | null;
+  onToggleSidebar?: () => void;
+  isSidebarExpanded?: boolean;
 }
 
 export const HeaderInstitucional: React.FC<HeaderInstitucionalProps> = ({
@@ -43,7 +48,9 @@ export const HeaderInstitucional: React.FC<HeaderInstitucionalProps> = ({
   onExportarJSON,
   onImportarJSON,
   onImprimir,
-  autoSaveMessage
+  autoSaveMessage,
+  onToggleSidebar,
+  isSidebarExpanded
 }) => {
   const currentGrupo = grupos[grupoActualIndex];
 
@@ -52,7 +59,21 @@ export const HeaderInstitucional: React.FC<HeaderInstitucionalProps> = ({
       {/* Top Banner Institucional */}
       <div className="bg-[#0a1628] text-white rounded-xl shadow-lg border-b-4 border-[#c9a84c] p-4 md:p-6 mb-4 relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-4 text-center md:text-left">
+          <div className="flex items-center gap-3.5 text-center md:text-left w-full md:w-auto">
+            {onToggleSidebar && (
+              <button
+                onClick={onToggleSidebar}
+                className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#c9a84c] border border-white/10 flex items-center justify-center transition-all shrink-0 no-print hover:scale-105 active:scale-95 shadow-sm"
+                title={isSidebarExpanded ? 'Colapsar menú lateral' : 'Expandir menú lateral'}
+              >
+                <span className="hidden md:inline">
+                  {isSidebarExpanded ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeft className="w-5 h-5" />}
+                </span>
+                <span className="md:hidden">
+                  <Menu className="w-5 h-5" />
+                </span>
+              </button>
+            )}
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#a8893a] flex items-center justify-center text-2xl font-bold shadow-md shrink-0 text-[#0a1628] border-2 border-white/20">
               🇵🇦
             </div>
